@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>4 Pad Soundboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(255, 255, 255, 0.08);
+      --card-strong: rgba(255, 255, 255, 0.14);
+      --line: rgba(255, 255, 255, 0.16);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --danger: #fb7185;
+      --ok: #34d399;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(56, 189, 248, .22), transparent 32%),
+        radial-gradient(circle at 85% 15%, rgba(168, 85, 247, .18), transparent 35%),
+        linear-gradient(145deg, #020617, var(--bg));
+      overflow: hidden;
+    }
+
+    .app {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 5vw, 34px);
+      line-height: 1.05;
+      letter-spacing: -0.05em;
+    }
+
+    .sub {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .file-label {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 13px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      user-select: none;
+    }
+
+    button:active, .file-label:active { transform: scale(.98); }
+    button.primary { border-color: rgba(56, 189, 248, .45); background: rgba(56, 189, 248, .18); }
+    button.danger { border-color: rgba(251, 113, 133, .42); background: rgba(251, 113, 133, .14); }
+    button.ok { border-color: rgba(52, 211, 153, .42); background: rgba(52, 211, 153, .14); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    .grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pad {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: linear-gradient(145deg, rgba(255,255,255,.13), rgba(255,255,255,.04));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 18px 54px rgba(0,0,0,.22);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .07s ease, border-color .12s ease, background .12s ease;
+      user-select: none;
+    }
+
+    .pad.empty { border-style: dashed; }
+    .pad.playing { transform: scale(.985); border-color: rgba(56, 189, 248, .95); background: rgba(56, 189, 248, .12); }
+    .pad:active { transform: scale(.985); }
+
+    .pad::before {
+      content: "";
+      position: absolute;
+      inset: -35%;
+      background: radial-gradient(circle, var(--glow), transparent 52%);
+      transform: translate(-18%, -18%);
+      opacity: .9;
+      pointer-events: none;
+    }
+
+    .pad:nth-child(1) { --glow: rgba(56, 189, 248, .24); }
+    .pad:nth-child(2) { --glow: rgba(168, 85, 247, .24); }
+    .pad:nth-child(3) { --glow: rgba(52, 211, 153, .24); }
+    .pad:nth-child(4) { --glow: rgba(251, 146, 60, .24); }
+
+    .pad-inner {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: clamp(16px, 4vw, 28px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .num {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.18);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 950;
+    }
+
+    .pad-title {
+      margin: 0;
+      font-size: clamp(22px, 5.5vw, 44px);
+      line-height: .95;
+      letter-spacing: -0.06em;
+      word-break: keep-all;
+    }
+
+    .pad-meta {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .edit-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: none;
+      z-index: 2;
+      padding: 7px 10px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      background: rgba(0,0,0,.24);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    body.editing .edit-badge { display: block; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .status { color: var(--muted); }
+
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      place-items: end center;
+      background: rgba(2, 6, 23, .62);
+      backdrop-filter: blur(10px);
+      padding: 14px;
+    }
+
+    .sheet-backdrop.open { display: grid; }
+
+    .sheet {
+      width: min(720px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: rgba(15, 23, 42, .96);
+      box-shadow: 0 24px 90px rgba(0,0,0,.46);
+      padding: 18px;
+    }
+
+    .sheet-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .sheet h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.04em;
+    }
+
+    .sheet p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .big-action {
+      min-height: 92px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      padding: 14px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .big-action strong { font-size: 17px; }
+    .big-action span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+
+    .record-panel {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 14px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .record-panel.open { display: block; }
+
+    .meter {
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,.1);
+      margin: 12px 0;
+    }
+
+    .meter > div {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--ok), var(--accent));
+      transition: width .08s linear;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .name-input {
+      width: 100%;
+      margin-top: 12px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 620px) {
+      header { align-items: flex-start; }
+      .controls { max-width: 150px; }
+      .controls button { padding: 9px 11px; font-size: 12px; }
+      .grid { gap: 10px; }
+      .pad { border-radius: 24px; }
+      .actions { grid-template-columns: 1fr; }
+      footer { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>4 Pad Soundboard</h1>
+        <p class="sub">각 기기 브라우저에만 저장됩니다. 같은 URL이어도 사람마다 자기 소리판입니다.</p>
+      </div>
+      <div class="controls">
+        <button id="editBtn" class="primary" type="button">편집</button>
+        <button id="clearBtn" class="danger" type="button">전체 삭제</button>
+      </div>
+    </header>
+
+    <section id="grid" class="grid" aria-label="사운드 패드 4개"></section>
+
+    <footer>
+      <span>빈 칸 터치: 녹음/업로드 · 저장된 칸 터치: 재생 · 편집 모드: 교체/삭제</span>
+      <span id="status" class="status">준비됨</span>
+    </footer>
+  </main>
+
+  <div id="sheetBackdrop" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <section class="sheet">
+      <div class="sheet-head">
+        <div>
+          <h2 id="sheetTitle">Pad 설정</h2>
+          <p id="sheetDesc">녹음하거나 기존 음성파일을 올리세요.</p>
+        </div>
+        <button id="closeSheetBtn" type="button">닫기</button>
+      </div>
+
+      <input id="nameInput" class="name-input" maxlength="24" placeholder="패드 이름 예: 고양이, 박수, 빵터짐" />
+
+      <div class="actions">
+        <button id="openRecordBtn" class="big-action" type="button">
+          <strong>🎙️ 바로 녹음</strong>
+          <span>브라우저 마이크 권한이 필요합니다. HTTPS 배포에서 가장 안정적입니다.</span>
+        </button>
+
+        <label class="big-action file-label" for="fileInput">
+          <strong>📁 파일 업로드</strong>
+          <span>mp3, wav, m4a, webm 등 브라우저가 재생 가능한 음성파일</span>
+        </label>
+        <input id="fileInput" class="hidden" type="file" accept="audio/*" />
+      </div>
+
+      <div id="recordPanel" class="record-panel">
+        <p id="recordText">녹음 버튼을 누르면 시작합니다.</p>
+        <div class="meter"><div id="meterBar"></div></div>
+        <div class="row">
+          <button id="startRecordBtn" class="ok" type="button">녹음 시작</button>
+          <button id="stopRecordBtn" class="danger" type="button" disabled>녹음 중지</button>
+          <button id="saveRecordBtn" class="primary" type="button" disabled>이 녹음 저장</button>
+        </div>
+        <audio id="recordPreview" controls class="hidden"></audio>
+      </div>
+
+      <audio id="currentPreview" controls class="hidden"></audio>
+
+      <div class="row">
+        <button id="deletePadBtn" class="danger" type="button">이 패드 삭제</button>
+        <button id="saveNameBtn" type="button">이름만 저장</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const DB_NAME = 'local-four-pad-soundboard';
+    const STORE = 'pads';
+    const PAD_COUNT = 4;
+
+    const grid = document.getElementById('grid');
+    const statusEl = document.getElementById('status');
+    const editBtn = document.getElementById('editBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const sheetBackdrop = document.getElementById('sheetBackdrop');
+    const sheetTitle = document.getElementById('sheetTitle');
+    const sheetDesc = document.getElementById('sheetDesc');
+    const closeSheetBtn = document.getElementById('closeSheetBtn');
+    const nameInput = document.getElementById('nameInput');
+    const fileInput = document.getElementById('fileInput');
+    const openRecordBtn = document.getElementById('openRecordBtn');
+    const recordPanel = document.getElementById('recordPanel');
+    const recordText = document.getElementById('recordText');
+    const meterBar = document.getElementById('meterBar');
+    const startRecordBtn = document.getElementById('startRecordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    const saveRecordBtn = document.getElementById('saveRecordBtn');
+    const recordPreview = document.getElementById('recordPreview');
+    const currentPreview = document.getElementById('currentPreview');
+    const deletePadBtn = document.getElementById('deletePadBtn');
+    const saveNameBtn = document.getElementById('saveNameBtn');
+
+    let db;
+    let pads = Array.from({ length: PAD_COUNT }, (_, i) => ({ id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null }));
+    let selectedPadId = null;
+    let editing = false;
+    let mediaRecorder = null;
+    let recordChunks = [];
+    let recordedBlob = null;
+    let audioStream = null;
+    let meterTimer = null;
+    let objectUrls = [];
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const database = req.result;
+          if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE, { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function txStore(mode = 'readonly') {
+      return db.transaction(STORE, mode).objectStore(STORE);
+    }
+
+    function getAllPads() {
+      return new Promise((resolve, reject) => {
+        const req = txStore().getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function putPad(pad) {
+      return new Promise((resolve, reject) => {
+        const req = txStore('readwrite').put(pad);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function deletePad(id) {
+      return new Promise((resolve, reject) => {
+        const req = txStore('readwrite').delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function clearPads() {
+      return new Promise((resolve, reject) => {
+        const req = txStore('readwrite').clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '비어 있음';
+      const d = new Date(ts);
+      return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function makeUrl(blob) {
+      const url = URL.createObjectURL(blob);
+      objectUrls.push(url);
+      if (objectUrls.length > 30) {
+        const old = objectUrls.shift();
+        URL.revokeObjectURL(old);
+      }
+      return url;
+    }
+
+    function renderPads() {
+      grid.innerHTML = '';
+      pads.forEach((pad, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `pad ${pad.blob ? '' : 'empty'}`;
+        btn.setAttribute('aria-label', `${pad.name || `Pad ${index + 1}`} ${pad.blob ? '재생' : '설정'}`);
+        btn.innerHTML = `
+          <span class="edit-badge">편집</span>
+          <div class="pad-inner">
+            <div class="num">${index + 1}</div>
+            <div class="pad-main">
+              <h3 class="pad-title">${escapeHtml(pad.name || `Pad ${index + 1}`)}</h3>
+              <p class="pad-meta">${pad.blob ? '터치하면 재생 · 저장 ' + formatDate(pad.updatedAt) : '터치해서 녹음/업로드'}</p>
+            </div>
+          </div>
+        `;
+        btn.addEventListener('click', () => handlePadClick(index, btn));
+        grid.appendChild(btn);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
+    }
+
+    function handlePadClick(id, el) {
+      const pad = pads[id];
+      if (editing || !pad.blob) {
+        openSheet(id);
+        return;
+      }
+      playPad(id, el);
+    }
+
+    function playPad(id, el) {
+      const pad = pads[id];
+      if (!pad.blob) return openSheet(id);
+      const audio = new Audio(makeUrl(pad.blob));
+      audio.preload = 'auto';
+      audio.currentTime = 0;
+      el.classList.add('playing');
+      setStatus(`${pad.name || `Pad ${id + 1}`} 재생`);
+      audio.addEventListener('ended', () => el.classList.remove('playing'));
+      audio.addEventListener('pause', () => el.classList.remove('playing'));
+      audio.play().catch(() => {
+        el.classList.remove('playing');
+        setStatus('브라우저가 재생을 막았습니다. 다시 터치해보세요.');
+      });
+    }
+
+    function openSheet(id) {
+      selectedPadId = id;
+      const pad = pads[id];
+      sheetTitle.textContent = `Pad ${id + 1} 설정`;
+      sheetDesc.textContent = pad.blob ? '기존 소리를 바꾸거나 삭제할 수 있습니다.' : '녹음하거나 기존 음성파일을 올리세요.';
+      nameInput.value = pad.name || `Pad ${id + 1}`;
+      deletePadBtn.disabled = !pad.blob;
+      currentPreview.classList.toggle('hidden', !pad.blob);
+      if (pad.blob) currentPreview.src = makeUrl(pad.blob);
+      resetRecordingUI();
+      sheetBackdrop.classList.add('open');
+      setTimeout(() => nameInput.focus({ preventScroll: true }), 50);
+    }
+
+    function closeSheet() {
+      sheetBackdrop.classList.remove('open');
+      fileInput.value = '';
+      currentPreview.pause();
+      currentPreview.removeAttribute('src');
+      recordPreview.pause();
+      recordPreview.removeAttribute('src');
+      stopStream();
+      resetRecordingUI();
+      selectedPadId = null;
+    }
+
+    async function saveBlobToPad(blob, suggestedName) {
+      if (selectedPadId === null) return;
+      const name = (nameInput.value.trim() || suggestedName || `Pad ${selectedPadId + 1}`).slice(0, 24);
+      const pad = {
+        id: selectedPadId,
+        name,
+        blob,
+        type: blob.type || 'audio/webm',
+        updatedAt: Date.now()
+      };
+      await putPad(pad);
+      pads[selectedPadId] = pad;
+      renderPads();
+      setStatus(`${name} 저장됨`);
+      closeSheet();
+    }
+
+    function resetRecordingUI() {
+      recordPanel.classList.remove('open');
+      recordText.textContent = '녹음 버튼을 누르면 시작합니다.';
+      meterBar.style.width = '0%';
+      startRecordBtn.disabled = false;
+      stopRecordBtn.disabled = true;
+      saveRecordBtn.disabled = true;
+      recordedBlob = null;
+      recordChunks = [];
+      recordPreview.classList.add('hidden');
+      recordPreview.removeAttribute('src');
+    }
+
+    function stopStream() {
+      if (meterTimer) clearInterval(meterTimer);
+      meterTimer = null;
+      if (audioStream) audioStream.getTracks().forEach(track => track.stop());
+      audioStream = null;
+      mediaRecorder = null;
+    }
+
+    async function startRecording() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+        setStatus('이 브라우저는 직접 녹음을 지원하지 않습니다. 파일 업로드를 사용하세요.');
+        recordText.textContent = '직접 녹음 미지원. 휴대폰 녹음앱으로 녹음 후 파일 업로드를 사용하세요.';
+        return;
+      }
+
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordChunks = [];
+        mediaRecorder = new MediaRecorder(audioStream);
+        mediaRecorder.ondataavailable = event => {
+          if (event.data && event.data.size > 0) recordChunks.push(event.data);
+        };
+        mediaRecorder.onstop = () => {
+          recordedBlob = new Blob(recordChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+          recordPreview.src = makeUrl(recordedBlob);
+          recordPreview.classList.remove('hidden');
+          saveRecordBtn.disabled = false;
+          startRecordBtn.disabled = false;
+          stopRecordBtn.disabled = true;
+          recordText.textContent = '녹음 완료. 미리 들어보고 저장하세요.';
+          stopStream();
+        };
+        mediaRecorder.start();
+        startRecordBtn.disabled = true;
+        stopRecordBtn.disabled = false;
+        saveRecordBtn.disabled = true;
+        recordText.textContent = '녹음 중...';
+        fakeMeter();
+      } catch (err) {
+        setStatus('마이크 권한이 거부되었거나 HTTPS가 아닙니다.');
+        recordText.textContent = '마이크 권한을 허용해야 합니다. 배포할 때는 HTTPS 환경이 필요합니다.';
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    }
+
+    function fakeMeter() {
+      if (meterTimer) clearInterval(meterTimer);
+      meterTimer = setInterval(() => {
+        meterBar.style.width = `${18 + Math.round(Math.random() * 78)}%`;
+      }, 90);
+    }
+
+    async function load() {
+      db = await openDB();
+      const saved = await getAllPads();
+      saved.forEach(item => {
+        if (Number.isInteger(item.id) && item.id >= 0 && item.id < PAD_COUNT) pads[item.id] = item;
+      });
+      renderPads();
+      setStatus('준비됨');
+    }
+
+    editBtn.addEventListener('click', () => {
+      editing = !editing;
+      document.body.classList.toggle('editing', editing);
+      editBtn.textContent = editing ? '재생 모드' : '편집';
+      setStatus(editing ? '편집 모드' : '재생 모드');
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      if (!confirm('이 기기에 저장된 4개 소리를 모두 삭제할까요?')) return;
+      await clearPads();
+      pads = Array.from({ length: PAD_COUNT }, (_, i) => ({ id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null }));
+      renderPads();
+      setStatus('전체 삭제됨');
+    });
+
+    closeSheetBtn.addEventListener('click', closeSheet);
+    sheetBackdrop.addEventListener('click', event => {
+      if (event.target === sheetBackdrop) closeSheet();
+    });
+
+    openRecordBtn.addEventListener('click', () => {
+      recordPanel.classList.toggle('open');
+    });
+
+    startRecordBtn.addEventListener('click', startRecording);
+    stopRecordBtn.addEventListener('click', stopRecording);
+    saveRecordBtn.addEventListener('click', () => {
+      if (recordedBlob) saveBlobToPad(recordedBlob, '녹음');
+    });
+
+    fileInput.addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('audio/')) {
+        setStatus('음성파일만 올릴 수 있습니다.');
+        return;
+      }
+      const name = file.name.replace(/\.[^.]+$/, '').slice(0, 24);
+      if (!nameInput.value.trim()) nameInput.value = name;
+      await saveBlobToPad(file, name);
+    });
+
+    deletePadBtn.addEventListener('click', async () => {
+      if (selectedPadId === null) return;
+      await deletePad(selectedPadId);
+      pads[selectedPadId] = { id: selectedPadId, name: `Pad ${selectedPadId + 1}`, blob: null, type: '', updatedAt: null };
+      renderPads();
+      setStatus(`Pad ${selectedPadId + 1} 삭제됨`);
+      closeSheet();
+    });
+
+    saveNameBtn.addEventListener('click', async () => {
+      if (selectedPadId === null) return;
+      const pad = pads[selectedPadId];
+      const name = (nameInput.value.trim() || `Pad ${selectedPadId + 1}`).slice(0, 24);
+      const next = { ...pad, name };
+      if (next.blob) await putPad(next);
+      pads[selectedPadId] = next;
+      renderPads();
+      setStatus('이름 저장됨');
+      closeSheet();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      objectUrls.forEach(url => URL.revokeObjectURL(url));
+      stopStream();
+    });
+
+    load().catch(err => {
+      console.error(err);
+      setStatus('저장소 초기화 실패');
+      alert('이 브라우저에서 로컬 저장소를 열 수 없습니다. 시크릿 모드이거나 저장소가 차단되었을 수 있습니다.');
+    });
+  </script>
+</body>
+</html>
