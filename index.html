@@ -727,7 +727,7 @@
             </div>
           </div>
         `;
-        btn.addEventListener('pointerdown', event => {
+        btn.addEventListener('pointerup', event => {
           if (event.button !== undefined && event.button !== 0) return;
           const loopTarget = event.target.closest('[data-loop-id]');
           if (loopTarget) return;
