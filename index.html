@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>9 Pad Soundboard</title>
+  <title>Soundboard</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -13,6 +13,7 @@
       --accent: #38bdf8;
       --danger: #fb7185;
       --ok: #34d399;
+      --warn: #facc15;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -61,7 +62,7 @@
       gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
-      max-width: 420px;
+      max-width: 560px;
     }
 
     button, .file-label {
@@ -75,12 +76,14 @@
       cursor: pointer;
       backdrop-filter: blur(12px);
       user-select: none;
+      touch-action: manipulation;
     }
 
     button:active, .file-label:active { transform: scale(.98); }
     button.primary { border-color: rgba(56, 189, 248, .45); background: rgba(56, 189, 248, .18); }
     button.danger { border-color: rgba(251, 113, 133, .42); background: rgba(251, 113, 133, .14); }
     button.ok { border-color: rgba(52, 211, 153, .42); background: rgba(52, 211, 153, .14); }
+    button.warn { border-color: rgba(250, 204, 21, .42); background: rgba(250, 204, 21, .14); }
     button:disabled { opacity: .45; cursor: not-allowed; }
 
     .grid {
@@ -111,10 +114,12 @@
       touch-action: manipulation;
       transition: transform .06s ease, border-color .12s ease, background .12s ease;
       user-select: none;
+      text-align: left;
     }
 
     .pad.empty { border-style: dashed; }
     .pad.hit { transform: scale(.97); border-color: rgba(56, 189, 248, .95); background: rgba(56, 189, 248, .12); }
+    .pad.looping { border-color: rgba(52, 211, 153, .95); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 2px rgba(52,211,153,.22), 0 18px 54px rgba(0,0,0,.22); }
     .pad:active { transform: scale(.97); }
 
     .pad::before {
@@ -145,6 +150,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      pointer-events: none;
     }
 
     .num {
@@ -188,23 +194,32 @@
 
     .mode9 .pad-meta { font-size: 11px; }
 
-    .edit-badge {
+    .edit-badge, .loop-badge {
       position: absolute;
-      top: 14px;
-      right: 14px;
-      display: none;
       z-index: 2;
       padding: 7px 10px;
       border: 1px solid rgba(255,255,255,.18);
       border-radius: 999px;
-      background: rgba(0,0,0,.24);
+      background: rgba(0,0,0,.28);
       color: var(--text);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 900;
     }
 
+    .edit-badge { top: 14px; right: 14px; display: none; }
     body.editing .edit-badge { display: block; }
+
+    .loop-badge {
+      right: 14px;
+      bottom: 14px;
+      display: none;
+      pointer-events: auto;
+    }
+    .pad.has-sound .loop-badge { display: block; }
+    .loop-badge.on { border-color: rgba(52,211,153,.7); background: rgba(52,211,153,.22); }
+
     .mode9 .edit-badge { top: 9px; right: 9px; padding: 5px 8px; font-size: 10px; }
+    .mode9 .loop-badge { right: 9px; bottom: 9px; padding: 5px 8px; font-size: 10px; }
 
     footer {
       display: flex;
@@ -230,7 +245,9 @@
     .sheet-backdrop.open { display: grid; }
 
     .sheet {
-      width: min(720px, 100%);
+      width: min(760px, 100%);
+      max-height: min(86dvh, 850px);
+      overflow: auto;
       border: 1px solid var(--line);
       border-radius: 28px;
       background: rgba(15, 23, 42, .96);
@@ -317,7 +334,7 @@
       margin-top: 10px;
     }
 
-    .name-input {
+    .name-input, .preset-input {
       width: 100%;
       margin-top: 12px;
       padding: 13px 14px;
@@ -329,19 +346,75 @@
       outline: none;
     }
 
+    .option-panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 14px;
+      background: rgba(255,255,255,.055);
+    }
+
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .option label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    .toggle-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .preset-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .preset-item {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .preset-name { font-weight: 900; }
+    .preset-meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+
     audio { width: 100%; margin-top: 12px; }
     .hidden { display: none; }
 
-    @media (max-width: 620px) {
+    @media (max-width: 720px) {
       header { align-items: flex-start; }
-      .controls { max-width: 190px; gap: 6px; }
+      .controls { max-width: 230px; gap: 6px; }
       .controls button { padding: 9px 10px; font-size: 12px; }
       .grid { gap: 10px; }
       .grid.mode9 { gap: 8px; }
       .pad { border-radius: 24px; }
       .mode9 .pad { border-radius: 20px; }
-      .actions { grid-template-columns: 1fr; }
+      .actions, .option-grid { grid-template-columns: 1fr; }
       footer { align-items: flex-start; flex-direction: column; }
+      .preset-item { grid-template-columns: 1fr; }
     }
 
     @media (max-height: 720px) {
@@ -355,10 +428,13 @@
     <header>
       <div>
         <h1>Soundboard</h1>
-        <p class="sub">각 기기 브라우저에만 저장됩니다. 연타하면 소리가 겹쳐서 재생됩니다.</p>
+        <p class="sub">각 기기 브라우저에만 저장됩니다. 연타/동시터치/루프/프리셋 지원.</p>
       </div>
       <div class="controls">
         <button id="modeBtn" class="primary" type="button">9칸 모드</button>
+        <button id="randomBtn" class="warn" type="button">🎲 랜덤</button>
+        <button id="stopBtn" class="danger" type="button">⏹ 정지</button>
+        <button id="presetBtn" class="primary" type="button">프리셋</button>
         <button id="editBtn" class="primary" type="button">편집</button>
         <button id="clearBtn" class="danger" type="button">전체 삭제</button>
       </div>
@@ -367,7 +443,7 @@
     <section id="grid" class="grid" aria-label="사운드 패드"></section>
 
     <footer>
-      <span>빈 칸 터치: 녹음/업로드 · 저장된 칸 터치: 재생 · PC 키보드 1~9도 가능</span>
+      <span>짧게 터치: 재생 · 🔁: 루프 켜기/끄기 · 빈 칸/편집 모드: 녹음/업로드 · PC 숫자키 1~9</span>
       <span id="status">준비됨</span>
     </footer>
   </main>
@@ -383,6 +459,27 @@
       </div>
 
       <input id="nameInput" class="name-input" maxlength="24" placeholder="패드 이름 예: 고양이, 박수, 빵터짐" />
+
+      <div class="option-panel">
+        <div class="option-grid">
+          <div class="option">
+            <label><span>볼륨</span><strong id="volumeValue">100%</strong></label>
+            <input id="volumeInput" type="range" min="0" max="100" value="100" />
+          </div>
+          <div class="option">
+            <label><span>재생속도</span><strong id="rateValue">1.00x</strong></label>
+            <input id="rateInput" type="range" min="50" max="200" value="100" />
+          </div>
+        </div>
+        <label class="toggle-line">
+          <span>속도 변경 시 피치도 같이 변경</span>
+          <input id="pitchInput" type="checkbox" />
+        </label>
+        <label class="toggle-line">
+          <span>이 패드는 기본 루프 모드</span>
+          <input id="loopInput" type="checkbox" />
+        </label>
+      </div>
 
       <div class="actions">
         <button id="openRecordBtn" class="big-action" type="button">
@@ -412,28 +509,58 @@
 
       <div class="row">
         <button id="deletePadBtn" class="danger" type="button">이 패드 삭제</button>
-        <button id="saveNameBtn" type="button">이름만 저장</button>
+        <button id="saveOptionsBtn" class="primary" type="button">설정 저장</button>
       </div>
+    </section>
+  </div>
+
+  <div id="presetBackdrop" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="presetTitle">
+    <section class="sheet">
+      <div class="sheet-head">
+        <div>
+          <h2 id="presetTitle">프리셋</h2>
+          <p>현재 4칸/9칸 구성과 음성파일, 볼륨, 속도, 루프 설정을 통째로 저장합니다. 이 기기 브라우저에만 저장됩니다.</p>
+        </div>
+        <button id="closePresetBtn" type="button">닫기</button>
+      </div>
+
+      <input id="presetNameInput" class="preset-input" maxlength="40" placeholder="프리셋 이름 예: 회의용, 동물농장, 친구놀리기" />
+      <div class="row">
+        <button id="savePresetBtn" class="ok" type="button">현재 보드 프리셋 저장</button>
+      </div>
+      <div id="presetList" class="preset-list"></div>
     </section>
   </div>
 
   <script>
     const DB_NAME = 'local-nine-pad-soundboard';
-    const STORE = 'pads';
+    const DB_VERSION = 2;
+    const PAD_STORE = 'pads';
+    const PRESET_STORE = 'presets';
     const MAX_PADS = 9;
     const MODE_KEY = 'soundboard-pad-mode';
-    const MAX_ACTIVE_AUDIO = 40;
+    const MAX_ACTIVE_AUDIO = 60;
 
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const modeBtn = document.getElementById('modeBtn');
+    const randomBtn = document.getElementById('randomBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const presetBtn = document.getElementById('presetBtn');
     const editBtn = document.getElementById('editBtn');
     const clearBtn = document.getElementById('clearBtn');
+
     const sheetBackdrop = document.getElementById('sheetBackdrop');
     const sheetTitle = document.getElementById('sheetTitle');
     const sheetDesc = document.getElementById('sheetDesc');
     const closeSheetBtn = document.getElementById('closeSheetBtn');
     const nameInput = document.getElementById('nameInput');
+    const volumeInput = document.getElementById('volumeInput');
+    const volumeValue = document.getElementById('volumeValue');
+    const rateInput = document.getElementById('rateInput');
+    const rateValue = document.getElementById('rateValue');
+    const pitchInput = document.getElementById('pitchInput');
+    const loopInput = document.getElementById('loopInput');
     const fileInput = document.getElementById('fileInput');
     const openRecordBtn = document.getElementById('openRecordBtn');
     const recordPanel = document.getElementById('recordPanel');
@@ -445,11 +572,18 @@
     const recordPreview = document.getElementById('recordPreview');
     const currentPreview = document.getElementById('currentPreview');
     const deletePadBtn = document.getElementById('deletePadBtn');
-    const saveNameBtn = document.getElementById('saveNameBtn');
+    const saveOptionsBtn = document.getElementById('saveOptionsBtn');
+
+    const presetBackdrop = document.getElementById('presetBackdrop');
+    const closePresetBtn = document.getElementById('closePresetBtn');
+    const presetNameInput = document.getElementById('presetNameInput');
+    const savePresetBtn = document.getElementById('savePresetBtn');
+    const presetList = document.getElementById('presetList');
 
     let db;
     let padMode = Number(localStorage.getItem(MODE_KEY)) === 9 ? 9 : 4;
     let pads = Array.from({ length: MAX_PADS }, (_, i) => defaultPad(i));
+    let presets = [];
     let selectedPadId = null;
     let editing = false;
     let mediaRecorder = null;
@@ -459,9 +593,39 @@
     let meterTimer = null;
     let objectUrls = [];
     let activeAudios = [];
+    let loopAudios = new Map();
 
     function defaultPad(i) {
-      return { id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null };
+      return {
+        id: i,
+        name: `Pad ${i + 1}`,
+        blob: null,
+        type: '',
+        updatedAt: null,
+        volume: 1,
+        rate: 1,
+        pitchShift: false,
+        loop: false
+      };
+    }
+
+    function normalizePad(item, index) {
+      const base = defaultPad(index);
+      if (!item) return base;
+      return {
+        ...base,
+        ...item,
+        id: index,
+        name: item.name || base.name,
+        volume: Number.isFinite(item.volume) ? clamp(item.volume, 0, 1) : 1,
+        rate: Number.isFinite(item.rate) ? clamp(item.rate, 0.5, 2) : 1,
+        pitchShift: Boolean(item.pitchShift),
+        loop: Boolean(item.loop)
+      };
+    }
+
+    function clamp(n, min, max) {
+      return Math.max(min, Math.min(max, n));
     }
 
     function setStatus(text) {
@@ -470,50 +634,55 @@
 
     function openDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, 1);
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = () => {
           const database = req.result;
-          if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE, { keyPath: 'id' });
+          if (!database.objectStoreNames.contains(PAD_STORE)) database.createObjectStore(PAD_STORE, { keyPath: 'id' });
+          if (!database.objectStoreNames.contains(PRESET_STORE)) database.createObjectStore(PRESET_STORE, { keyPath: 'id' });
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
     }
 
-    function txStore(mode = 'readonly') {
-      return db.transaction(STORE, mode).objectStore(STORE);
+    function store(name, mode = 'readonly') {
+      return db.transaction(name, mode).objectStore(name);
     }
 
-    function getAllPads() {
+    function getAll(name) {
       return new Promise((resolve, reject) => {
-        const req = txStore().getAll();
+        const req = store(name).getAll();
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => reject(req.error);
       });
     }
 
-    function putPad(pad) {
+    function put(name, value) {
       return new Promise((resolve, reject) => {
-        const req = txStore('readwrite').put(pad);
+        const req = store(name, 'readwrite').put(value);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
     }
 
-    function deletePad(id) {
+    function remove(name, id) {
       return new Promise((resolve, reject) => {
-        const req = txStore('readwrite').delete(id);
+        const req = store(name, 'readwrite').delete(id);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
     }
 
-    function clearPads() {
+    function clearStore(name) {
       return new Promise((resolve, reject) => {
-        const req = txStore('readwrite').clear();
+        const req = store(name, 'readwrite').clear();
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
+    }
+
+    async function saveActivePads() {
+      await Promise.all(pads.map(p => put(PAD_STORE, p)));
     }
 
     function formatDate(ts) {
@@ -525,7 +694,7 @@
     function makeUrl(blob) {
       const url = URL.createObjectURL(blob);
       objectUrls.push(url);
-      if (objectUrls.length > 60) {
+      if (objectUrls.length > 100) {
         const old = objectUrls.shift();
         URL.revokeObjectURL(old);
       }
@@ -544,20 +713,27 @@
       visiblePads().forEach((pad, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `pad ${pad.blob ? '' : 'empty'}`;
+        btn.className = `pad ${pad.blob ? 'has-sound' : 'empty'} ${loopAudios.has(index) ? 'looping' : ''}`;
         btn.dataset.padId = String(index);
         btn.setAttribute('aria-label', `${pad.name || `Pad ${index + 1}`} ${pad.blob ? '재생' : '설정'}`);
         btn.innerHTML = `
           <span class="edit-badge">편집</span>
+          <span class="loop-badge ${pad.loop ? 'on' : ''}" data-loop-id="${index}">🔁 ${pad.loop ? 'ON' : 'OFF'}</span>
           <div class="pad-inner">
             <div class="num">${index + 1}</div>
             <div class="pad-main">
               <h3 class="pad-title">${escapeHtml(pad.name || `Pad ${index + 1}`)}</h3>
-              <p class="pad-meta">${pad.blob ? '연타 가능 · 저장 ' + formatDate(pad.updatedAt) : '녹음/업로드'}</p>
+              <p class="pad-meta">${pad.blob ? `${Math.round(pad.volume * 100)}% · ${pad.rate.toFixed(2)}x · ${pad.loop ? '루프' : '연타'}` : '녹음/업로드'}</p>
             </div>
           </div>
         `;
-        btn.addEventListener('click', () => handlePadClick(index, btn));
+        btn.addEventListener('pointerdown', event => {
+          if (event.button !== undefined && event.button !== 0) return;
+          const loopTarget = event.target.closest('[data-loop-id]');
+          if (loopTarget) return;
+          event.preventDefault();
+          handlePadTouch(index, btn);
+        });
         grid.appendChild(btn);
       });
     }
@@ -566,7 +742,11 @@
       return String(str).replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
     }
 
-    function handlePadClick(id, el) {
+    function getPadEl(id) {
+      return grid.querySelector(`[data-pad-id="${id}"]`);
+    }
+
+    function handlePadTouch(id, el) {
       const pad = pads[id];
       if (editing || !pad.blob) {
         openSheet(id);
@@ -575,13 +755,28 @@
       playPad(id, el);
     }
 
-    function playPad(id, el) {
+    function applyAudioOptions(audio, pad) {
+      audio.volume = clamp(pad.volume ?? 1, 0, 1);
+      audio.playbackRate = clamp(pad.rate ?? 1, 0.5, 2);
+      const preserve = !pad.pitchShift;
+      if ('preservesPitch' in audio) audio.preservesPitch = preserve;
+      if ('mozPreservesPitch' in audio) audio.mozPreservesPitch = preserve;
+      if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = preserve;
+    }
+
+    function playPad(id, el, options = {}) {
       const pad = pads[id];
       if (!pad.blob) return openSheet(id);
+
+      if (pad.loop && !options.forceOneShot) {
+        toggleLoop(id, el);
+        return;
+      }
 
       const audio = new Audio(makeUrl(pad.blob));
       audio.preload = 'auto';
       audio.currentTime = 0;
+      applyAudioOptions(audio, pad);
 
       activeAudios.push(audio);
       if (activeAudios.length > MAX_ACTIVE_AUDIO) {
@@ -606,10 +801,69 @@
     }
 
     function pulsePad(el) {
+      if (!el) return;
       el.classList.remove('hit');
       void el.offsetWidth;
       el.classList.add('hit');
       setTimeout(() => el.classList.remove('hit'), 130);
+    }
+
+    function toggleLoop(id, el = getPadEl(id)) {
+      const pad = pads[id];
+      if (!pad.blob) return;
+
+      if (loopAudios.has(id)) {
+        const old = loopAudios.get(id);
+        try { old.pause(); old.src = ''; } catch (_) {}
+        loopAudios.delete(id);
+        if (el) el.classList.remove('looping');
+        setStatus(`${pad.name} 루프 정지`);
+        return;
+      }
+
+      const audio = new Audio(makeUrl(pad.blob));
+      audio.loop = true;
+      audio.preload = 'auto';
+      applyAudioOptions(audio, pad);
+      loopAudios.set(id, audio);
+      if (el) el.classList.add('looping');
+      pulsePad(el);
+      audio.play().then(() => {
+        setStatus(`${pad.name} 루프 재생`);
+      }).catch(() => {
+        loopAudios.delete(id);
+        if (el) el.classList.remove('looping');
+        setStatus('루프 재생 실패. 다시 터치해보세요.');
+      });
+    }
+
+    function stopAllSounds() {
+      activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
+      activeAudios = [];
+      loopAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
+      loopAudios.clear();
+      document.querySelectorAll('.pad.looping').forEach(el => el.classList.remove('looping'));
+      setStatus('전체 정지');
+    }
+
+    function playRandom() {
+      const candidates = visiblePads().filter(p => p.blob);
+      if (!candidates.length) {
+        setStatus('랜덤 재생할 패드가 없습니다.');
+        return;
+      }
+      const pad = candidates[Math.floor(Math.random() * candidates.length)];
+      playPad(pad.id, getPadEl(pad.id), { forceOneShot: true });
+    }
+
+    async function togglePadLoopFlag(id) {
+      const pad = pads[id];
+      if (!pad.blob) return;
+      pad.loop = !pad.loop;
+      await put(PAD_STORE, pad);
+      if (!pad.loop && loopAudios.has(id)) toggleLoop(id);
+      renderPads();
+      setStatus(`${pad.name} 루프 ${pad.loop ? '켜짐' : '꺼짐'}`);
     }
 
     function openSheet(id) {
@@ -618,9 +872,17 @@
       sheetTitle.textContent = `Pad ${id + 1} 설정`;
       sheetDesc.textContent = pad.blob ? '기존 소리를 바꾸거나 삭제할 수 있습니다.' : '녹음하거나 기존 음성파일을 올리세요.';
       nameInput.value = pad.name || `Pad ${id + 1}`;
+      volumeInput.value = Math.round((pad.volume ?? 1) * 100);
+      rateInput.value = Math.round((pad.rate ?? 1) * 100);
+      pitchInput.checked = Boolean(pad.pitchShift);
+      loopInput.checked = Boolean(pad.loop);
+      updateOptionLabels();
       deletePadBtn.disabled = !pad.blob;
       currentPreview.classList.toggle('hidden', !pad.blob);
-      if (pad.blob) currentPreview.src = makeUrl(pad.blob);
+      if (pad.blob) {
+        currentPreview.src = makeUrl(pad.blob);
+        applyAudioOptions(currentPreview, pad);
+      }
       resetRecordingUI();
       sheetBackdrop.classList.add('open');
       setTimeout(() => nameInput.focus({ preventScroll: true }), 50);
@@ -638,20 +900,52 @@
       selectedPadId = null;
     }
 
+    function updateOptionLabels() {
+      volumeValue.textContent = `${volumeInput.value}%`;
+      rateValue.textContent = `${(Number(rateInput.value) / 100).toFixed(2)}x`;
+    }
+
+    function getOptionsFromSheet() {
+      return {
+        name: (nameInput.value.trim() || `Pad ${(selectedPadId ?? 0) + 1}`).slice(0, 24),
+        volume: clamp(Number(volumeInput.value) / 100, 0, 1),
+        rate: clamp(Number(rateInput.value) / 100, 0.5, 2),
+        pitchShift: Boolean(pitchInput.checked),
+        loop: Boolean(loopInput.checked)
+      };
+    }
+
     async function saveBlobToPad(blob, suggestedName) {
       if (selectedPadId === null) return;
-      const name = (nameInput.value.trim() || suggestedName || `Pad ${selectedPadId + 1}`).slice(0, 24);
+      const options = getOptionsFromSheet();
       const pad = {
-        id: selectedPadId,
-        name,
+        ...defaultPad(selectedPadId),
+        ...options,
+        name: options.name || suggestedName || `Pad ${selectedPadId + 1}`,
         blob,
         type: blob.type || 'audio/webm',
         updatedAt: Date.now()
       };
-      await putPad(pad);
+      await put(PAD_STORE, pad);
       pads[selectedPadId] = pad;
       renderPads();
-      setStatus(`${name} 저장됨`);
+      setStatus(`${pad.name} 저장됨`);
+      closeSheet();
+    }
+
+    async function savePadOptions() {
+      if (selectedPadId === null) return;
+      const old = pads[selectedPadId];
+      const options = getOptionsFromSheet();
+      const next = { ...old, ...options };
+      pads[selectedPadId] = next;
+      if (next.blob) await put(PAD_STORE, next);
+      if (loopAudios.has(selectedPadId)) {
+        toggleLoop(selectedPadId);
+        if (next.loop) setTimeout(() => toggleLoop(selectedPadId), 50);
+      }
+      renderPads();
+      setStatus('설정 저장됨');
       closeSheet();
     }
 
@@ -723,11 +1017,99 @@
       }, 90);
     }
 
+    function makeId() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function clonePadsForPreset() {
+      return pads.map((pad, index) => ({ ...normalizePad(pad, index) }));
+    }
+
+    async function openPresetSheet() {
+      presets = await getAll(PRESET_STORE);
+      presets.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      renderPresetList();
+      presetNameInput.value = '';
+      presetBackdrop.classList.add('open');
+      setTimeout(() => presetNameInput.focus({ preventScroll: true }), 50);
+    }
+
+    function closePresetSheet() {
+      presetBackdrop.classList.remove('open');
+    }
+
+    function renderPresetList() {
+      presetList.innerHTML = '';
+      if (!presets.length) {
+        const empty = document.createElement('p');
+        empty.textContent = '저장된 프리셋이 없습니다.';
+        presetList.appendChild(empty);
+        return;
+      }
+      presets.forEach(preset => {
+        const item = document.createElement('div');
+        item.className = 'preset-item';
+        const filled = (preset.pads || []).filter(p => p.blob).length;
+        item.innerHTML = `
+          <div>
+            <div class="preset-name">${escapeHtml(preset.name || '이름 없는 프리셋')}</div>
+            <div class="preset-meta">${preset.padMode || 4}칸 · 저장된 소리 ${filled}개 · ${formatDate(preset.updatedAt)}</div>
+          </div>
+          <button class="primary" data-load-preset="${preset.id}" type="button">불러오기</button>
+          <button class="danger" data-delete-preset="${preset.id}" type="button">삭제</button>
+        `;
+        presetList.appendChild(item);
+      });
+    }
+
+    async function savePreset() {
+      const name = presetNameInput.value.trim() || `프리셋 ${formatDate(Date.now())}`;
+      const now = Date.now();
+      const preset = {
+        id: makeId(),
+        name: name.slice(0, 40),
+        padMode,
+        pads: clonePadsForPreset(),
+        createdAt: now,
+        updatedAt: now
+      };
+      await put(PRESET_STORE, preset);
+      presets.unshift(preset);
+      presetNameInput.value = '';
+      renderPresetList();
+      setStatus(`${preset.name} 프리셋 저장됨`);
+    }
+
+    async function loadPreset(id) {
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+      stopAllSounds();
+      padMode = preset.padMode === 9 ? 9 : 4;
+      localStorage.setItem(MODE_KEY, String(padMode));
+      pads = Array.from({ length: MAX_PADS }, (_, i) => normalizePad((preset.pads || [])[i], i));
+      await clearStore(PAD_STORE);
+      await saveActivePads();
+      renderPads();
+      setStatus(`${preset.name} 불러옴`);
+      closePresetSheet();
+    }
+
+    async function deletePreset(id) {
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+      if (!confirm(`프리셋 '${preset.name}'을 삭제할까요?`)) return;
+      await remove(PRESET_STORE, id);
+      presets = presets.filter(p => p.id !== id);
+      renderPresetList();
+      setStatus('프리셋 삭제됨');
+    }
+
     async function load() {
       db = await openDB();
-      const saved = await getAllPads();
+      const saved = await getAll(PAD_STORE);
       saved.forEach(item => {
-        if (Number.isInteger(item.id) && item.id >= 0 && item.id < MAX_PADS) pads[item.id] = item;
+        if (Number.isInteger(item.id) && item.id >= 0 && item.id < MAX_PADS) pads[item.id] = normalizePad(item, item.id);
       });
       renderPads();
       setStatus('준비됨');
@@ -740,6 +1122,10 @@
       setStatus(`${padMode}칸 모드`);
     });
 
+    randomBtn.addEventListener('click', playRandom);
+    stopBtn.addEventListener('click', stopAllSounds);
+    presetBtn.addEventListener('click', openPresetSheet);
+
     editBtn.addEventListener('click', () => {
       editing = !editing;
       document.body.classList.toggle('editing', editing);
@@ -748,19 +1134,40 @@
     });
 
     clearBtn.addEventListener('click', async () => {
-      if (!confirm(`이 기기에 저장된 ${MAX_PADS}개 패드를 모두 삭제할까요?`)) return;
-      await clearPads();
+      if (!confirm(`이 기기에 저장된 ${MAX_PADS}개 패드를 모두 삭제할까요? 프리셋은 유지됩니다.`)) return;
+      stopAllSounds();
+      await clearStore(PAD_STORE);
       pads = Array.from({ length: MAX_PADS }, (_, i) => defaultPad(i));
-      activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
-      activeAudios = [];
       renderPads();
       setStatus('전체 삭제됨');
+    });
+
+    grid.addEventListener('click', async event => {
+      const loopBtn = event.target.closest('[data-loop-id]');
+      if (!loopBtn) return;
+      event.preventDefault();
+      event.stopPropagation();
+      await togglePadLoopFlag(Number(loopBtn.dataset.loopId));
     });
 
     closeSheetBtn.addEventListener('click', closeSheet);
     sheetBackdrop.addEventListener('click', event => {
       if (event.target === sheetBackdrop) closeSheet();
     });
+
+    closePresetBtn.addEventListener('click', closePresetSheet);
+    presetBackdrop.addEventListener('click', event => {
+      if (event.target === presetBackdrop) closePresetSheet();
+    });
+
+    presetList.addEventListener('click', async event => {
+      const loadBtn = event.target.closest('[data-load-preset]');
+      const deleteBtn = event.target.closest('[data-delete-preset]');
+      if (loadBtn) await loadPreset(loadBtn.dataset.loadPreset);
+      if (deleteBtn) await deletePreset(deleteBtn.dataset.deletePreset);
+    });
+
+    savePresetBtn.addEventListener('click', savePreset);
 
     openRecordBtn.addEventListener('click', () => {
       recordPanel.classList.toggle('open');
@@ -770,6 +1177,15 @@
     stopRecordBtn.addEventListener('click', stopRecording);
     saveRecordBtn.addEventListener('click', () => {
       if (recordedBlob) saveBlobToPad(recordedBlob, '녹음');
+    });
+
+    volumeInput.addEventListener('input', updateOptionLabels);
+    rateInput.addEventListener('input', updateOptionLabels);
+    pitchInput.addEventListener('change', () => {
+      if (currentPreview.src && selectedPadId !== null) {
+        const tempPad = { ...pads[selectedPadId], ...getOptionsFromSheet() };
+        applyAudioOptions(currentPreview, tempPad);
+      }
     });
 
     fileInput.addEventListener('change', async event => {
@@ -787,37 +1203,29 @@
     deletePadBtn.addEventListener('click', async () => {
       if (selectedPadId === null) return;
       const id = selectedPadId;
-      await deletePad(id);
+      if (loopAudios.has(id)) toggleLoop(id);
+      await remove(PAD_STORE, id);
       pads[id] = defaultPad(id);
       renderPads();
       setStatus(`Pad ${id + 1} 삭제됨`);
       closeSheet();
     });
 
-    saveNameBtn.addEventListener('click', async () => {
-      if (selectedPadId === null) return;
-      const pad = pads[selectedPadId];
-      const name = (nameInput.value.trim() || `Pad ${selectedPadId + 1}`).slice(0, 24);
-      const next = { ...pad, name };
-      if (next.blob) await putPad(next);
-      pads[selectedPadId] = next;
-      renderPads();
-      setStatus('이름 저장됨');
-      closeSheet();
-    });
+    saveOptionsBtn.addEventListener('click', savePadOptions);
 
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
-      if (sheetBackdrop.classList.contains('open')) return;
+      if (sheetBackdrop.classList.contains('open') || presetBackdrop.classList.contains('open')) return;
+      if (event.key.toLowerCase() === 'r') return playRandom();
+      if (event.key === 'Escape') return stopAllSounds();
       const n = Number(event.key);
       if (!Number.isInteger(n) || n < 1 || n > padMode) return;
-      const el = grid.querySelector(`[data-pad-id="${n - 1}"]`);
-      if (el) handlePadClick(n - 1, el);
+      handlePadTouch(n - 1, getPadEl(n - 1));
     });
 
     window.addEventListener('beforeunload', () => {
       objectUrls.forEach(url => URL.revokeObjectURL(url));
-      activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
+      stopAllSounds();
       stopStream();
     });
 
