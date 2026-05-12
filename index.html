@@ -525,7 +525,9 @@
     const PRESET_STORE = 'presets';
     const MAX_PADS = 9;
     const MODE_KEY = 'soundboard-pad-mode';
-    const MAX_ACTIVE_AUDIO = 60;
+    const MAX_ACTIVE_AUDIO = 80;
+    const RANDOM_MIN_DELAY = 90;
+    const RANDOM_MAX_DELAY = 380;
 
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
@@ -578,6 +580,8 @@
     let meterTimer = null;
     let objectUrls = [];
     let activeAudios = [];
+    let randomMode = false;
+    let randomTimer = null;
 
     function defaultPad(i) {
       return {
@@ -783,19 +787,75 @@
     }
 
     function stopAllSounds() {
+      stopRandomMode(false);
       activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
       activeAudios = [];
       setStatus('전체 정지');
     }
 
-    function playRandom() {
-      const candidates = visiblePads().filter(p => p.blob);
-      if (!candidates.length) {
+    function getRandomCandidates() {
+      return visiblePads().filter(p => p.blob);
+    }
+
+    function playRandomOneShot() {
+      const candidates = getRandomCandidates();
+      if (!candidates.length) return false;
+      const pad = candidates[Math.floor(Math.random() * candidates.length)];
+      playPad(pad.id, getPadEl(pad.id));
+      return true;
+    }
+
+    function toggleRandomMode() {
+      if (randomMode) {
+        stopRandomMode(true);
+        return;
+      }
+
+      if (!getRandomCandidates().length) {
         setStatus('랜덤 재생할 패드가 없습니다.');
         return;
       }
-      const pad = candidates[Math.floor(Math.random() * candidates.length)];
-      playPad(pad.id, getPadEl(pad.id));
+
+      randomMode = true;
+      randomBtn.textContent = '🎲 랜덤 ON';
+      randomBtn.classList.add('ok');
+      randomBtn.classList.remove('warn');
+      setStatus('랜덤 폭주 모드 시작');
+      randomBurst();
+    }
+
+    function stopRandomMode(showStatus = true) {
+      randomMode = false;
+      if (randomTimer) clearTimeout(randomTimer);
+      randomTimer = null;
+      randomBtn.textContent = '🎲 랜덤';
+      randomBtn.classList.remove('ok');
+      randomBtn.classList.add('warn');
+      if (showStatus) setStatus('랜덤 폭주 모드 정지');
+    }
+
+    function randomBurst() {
+      if (!randomMode) return;
+
+      const candidates = getRandomCandidates();
+      if (!candidates.length) {
+        stopRandomMode(false);
+        setStatus('랜덤 재생할 패드가 없어 정지됨');
+        return;
+      }
+
+      const roll = Math.random();
+      const count = roll > 0.88 ? 3 : roll > 0.62 ? 2 : 1;
+
+      for (let i = 0; i < count; i += 1) {
+        const delay = i === 0 ? 0 : Math.floor(Math.random() * 80);
+        setTimeout(() => {
+          if (randomMode) playRandomOneShot();
+        }, delay);
+      }
+
+      const nextDelay = RANDOM_MIN_DELAY + Math.floor(Math.random() * (RANDOM_MAX_DELAY - RANDOM_MIN_DELAY));
+      randomTimer = setTimeout(randomBurst, nextDelay);
     }
 
     function openSheet(id) {
@@ -1048,7 +1108,7 @@
       setStatus(`${padMode}칸 모드`);
     });
 
-    randomBtn.addEventListener('click', playRandom);
+    randomBtn.addEventListener('click', toggleRandomMode);
     stopBtn.addEventListener('click', stopAllSounds);
     presetBtn.addEventListener('click', openPresetSheet);
 
@@ -1133,7 +1193,7 @@
     window.addEventListener('keydown', event => {
       if (event.repeat) return;
       if (sheetBackdrop.classList.contains('open') || presetBackdrop.classList.contains('open')) return;
-      if (event.key.toLowerCase() === 'r') return playRandom();
+      if (event.key.toLowerCase() === 'r') return toggleRandomMode();
       if (event.key === 'Escape') return stopAllSounds();
       const n = Number(event.key);
       if (!Number.isInteger(n) || n < 1 || n > padMode) return;
