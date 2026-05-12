@@ -3,12 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>4 Pad Soundboard</title>
+  <title>9 Pad Soundboard</title>
   <style>
     :root {
       --bg: #0f172a;
-      --card: rgba(255, 255, 255, 0.08);
-      --card-strong: rgba(255, 255, 255, 0.14);
       --line: rgba(255, 255, 255, 0.16);
       --text: #f8fafc;
       --muted: #94a3b8;
@@ -63,11 +61,12 @@
       gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      max-width: 420px;
     }
 
     button, .file-label {
       border: 1px solid var(--line);
-      background: var(--card);
+      background: rgba(255,255,255,.08);
       color: var(--text);
       border-radius: 999px;
       padding: 10px 13px;
@@ -87,9 +86,18 @@
     .grid {
       min-height: 0;
       display: grid;
+      gap: 12px;
+    }
+
+    .grid.mode4 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       grid-template-rows: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+    }
+
+    .grid.mode9 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .pad {
@@ -101,13 +109,13 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 18px 54px rgba(0,0,0,.22);
       cursor: pointer;
       touch-action: manipulation;
-      transition: transform .07s ease, border-color .12s ease, background .12s ease;
+      transition: transform .06s ease, border-color .12s ease, background .12s ease;
       user-select: none;
     }
 
     .pad.empty { border-style: dashed; }
-    .pad.playing { transform: scale(.985); border-color: rgba(56, 189, 248, .95); background: rgba(56, 189, 248, .12); }
-    .pad:active { transform: scale(.985); }
+    .pad.hit { transform: scale(.97); border-color: rgba(56, 189, 248, .95); background: rgba(56, 189, 248, .12); }
+    .pad:active { transform: scale(.97); }
 
     .pad::before {
       content: "";
@@ -123,12 +131,17 @@
     .pad:nth-child(2) { --glow: rgba(168, 85, 247, .24); }
     .pad:nth-child(3) { --glow: rgba(52, 211, 153, .24); }
     .pad:nth-child(4) { --glow: rgba(251, 146, 60, .24); }
+    .pad:nth-child(5) { --glow: rgba(244, 114, 182, .24); }
+    .pad:nth-child(6) { --glow: rgba(250, 204, 21, .20); }
+    .pad:nth-child(7) { --glow: rgba(45, 212, 191, .24); }
+    .pad:nth-child(8) { --glow: rgba(129, 140, 248, .24); }
+    .pad:nth-child(9) { --glow: rgba(248, 113, 113, .24); }
 
     .pad-inner {
       position: relative;
       z-index: 1;
       height: 100%;
-      padding: clamp(16px, 4vw, 28px);
+      padding: clamp(13px, 3vw, 28px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -146,12 +159,24 @@
       font-weight: 950;
     }
 
+    .mode9 .num {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
     .pad-title {
       margin: 0;
-      font-size: clamp(22px, 5.5vw, 44px);
+      font-size: clamp(18px, 4.5vw, 44px);
       line-height: .95;
       letter-spacing: -0.06em;
       word-break: keep-all;
+    }
+
+    .mode9 .pad-title {
+      font-size: clamp(15px, 3.4vw, 26px);
+      letter-spacing: -0.05em;
     }
 
     .pad-meta {
@@ -160,6 +185,8 @@
       font-size: 13px;
       line-height: 1.35;
     }
+
+    .mode9 .pad-meta { font-size: 11px; }
 
     .edit-badge {
       position: absolute;
@@ -177,6 +204,7 @@
     }
 
     body.editing .edit-badge { display: block; }
+    .mode9 .edit-badge { top: 9px; right: 9px; padding: 5px 8px; font-size: 10px; }
 
     footer {
       display: flex;
@@ -187,8 +215,6 @@
       font-size: 12px;
       line-height: 1.35;
     }
-
-    .status { color: var(--muted); }
 
     .sheet-backdrop {
       position: fixed;
@@ -244,7 +270,7 @@
       min-height: 92px;
       border-radius: 22px;
       border: 1px solid var(--line);
-      background: var(--card);
+      background: rgba(255,255,255,.08);
       padding: 14px;
       text-align: left;
       display: flex;
@@ -303,21 +329,24 @@
       outline: none;
     }
 
-    audio {
-      width: 100%;
-      margin-top: 12px;
-    }
-
+    audio { width: 100%; margin-top: 12px; }
     .hidden { display: none; }
 
     @media (max-width: 620px) {
       header { align-items: flex-start; }
-      .controls { max-width: 150px; }
-      .controls button { padding: 9px 11px; font-size: 12px; }
+      .controls { max-width: 190px; gap: 6px; }
+      .controls button { padding: 9px 10px; font-size: 12px; }
       .grid { gap: 10px; }
+      .grid.mode9 { gap: 8px; }
       .pad { border-radius: 24px; }
+      .mode9 .pad { border-radius: 20px; }
       .actions { grid-template-columns: 1fr; }
       footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (max-height: 720px) {
+      .sub { display: none; }
+      .pad-meta { display: none; }
     }
   </style>
 </head>
@@ -325,20 +354,21 @@
   <main class="app">
     <header>
       <div>
-        <h1>4 Pad Soundboard</h1>
-        <p class="sub">각 기기 브라우저에만 저장됩니다. 같은 URL이어도 사람마다 자기 소리판입니다.</p>
+        <h1>Soundboard</h1>
+        <p class="sub">각 기기 브라우저에만 저장됩니다. 연타하면 소리가 겹쳐서 재생됩니다.</p>
       </div>
       <div class="controls">
+        <button id="modeBtn" class="primary" type="button">9칸 모드</button>
         <button id="editBtn" class="primary" type="button">편집</button>
         <button id="clearBtn" class="danger" type="button">전체 삭제</button>
       </div>
     </header>
 
-    <section id="grid" class="grid" aria-label="사운드 패드 4개"></section>
+    <section id="grid" class="grid" aria-label="사운드 패드"></section>
 
     <footer>
-      <span>빈 칸 터치: 녹음/업로드 · 저장된 칸 터치: 재생 · 편집 모드: 교체/삭제</span>
-      <span id="status" class="status">준비됨</span>
+      <span>빈 칸 터치: 녹음/업로드 · 저장된 칸 터치: 재생 · PC 키보드 1~9도 가능</span>
+      <span id="status">준비됨</span>
     </footer>
   </main>
 
@@ -388,12 +418,15 @@
   </div>
 
   <script>
-    const DB_NAME = 'local-four-pad-soundboard';
+    const DB_NAME = 'local-nine-pad-soundboard';
     const STORE = 'pads';
-    const PAD_COUNT = 4;
+    const MAX_PADS = 9;
+    const MODE_KEY = 'soundboard-pad-mode';
+    const MAX_ACTIVE_AUDIO = 40;
 
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
+    const modeBtn = document.getElementById('modeBtn');
     const editBtn = document.getElementById('editBtn');
     const clearBtn = document.getElementById('clearBtn');
     const sheetBackdrop = document.getElementById('sheetBackdrop');
@@ -415,7 +448,8 @@
     const saveNameBtn = document.getElementById('saveNameBtn');
 
     let db;
-    let pads = Array.from({ length: PAD_COUNT }, (_, i) => ({ id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null }));
+    let padMode = Number(localStorage.getItem(MODE_KEY)) === 9 ? 9 : 4;
+    let pads = Array.from({ length: MAX_PADS }, (_, i) => defaultPad(i));
     let selectedPadId = null;
     let editing = false;
     let mediaRecorder = null;
@@ -424,6 +458,11 @@
     let audioStream = null;
     let meterTimer = null;
     let objectUrls = [];
+    let activeAudios = [];
+
+    function defaultPad(i) {
+      return { id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null };
+    }
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -486,19 +525,27 @@
     function makeUrl(blob) {
       const url = URL.createObjectURL(blob);
       objectUrls.push(url);
-      if (objectUrls.length > 30) {
+      if (objectUrls.length > 60) {
         const old = objectUrls.shift();
         URL.revokeObjectURL(old);
       }
       return url;
     }
 
+    function visiblePads() {
+      return pads.slice(0, padMode);
+    }
+
     function renderPads() {
       grid.innerHTML = '';
-      pads.forEach((pad, index) => {
+      grid.className = `grid mode${padMode}`;
+      modeBtn.textContent = padMode === 4 ? '9칸 모드' : '4칸 모드';
+
+      visiblePads().forEach((pad, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `pad ${pad.blob ? '' : 'empty'}`;
+        btn.dataset.padId = String(index);
         btn.setAttribute('aria-label', `${pad.name || `Pad ${index + 1}`} ${pad.blob ? '재생' : '설정'}`);
         btn.innerHTML = `
           <span class="edit-badge">편집</span>
@@ -506,7 +553,7 @@
             <div class="num">${index + 1}</div>
             <div class="pad-main">
               <h3 class="pad-title">${escapeHtml(pad.name || `Pad ${index + 1}`)}</h3>
-              <p class="pad-meta">${pad.blob ? '터치하면 재생 · 저장 ' + formatDate(pad.updatedAt) : '터치해서 녹음/업로드'}</p>
+              <p class="pad-meta">${pad.blob ? '연타 가능 · 저장 ' + formatDate(pad.updatedAt) : '녹음/업로드'}</p>
             </div>
           </div>
         `;
@@ -531,17 +578,38 @@
     function playPad(id, el) {
       const pad = pads[id];
       if (!pad.blob) return openSheet(id);
+
       const audio = new Audio(makeUrl(pad.blob));
       audio.preload = 'auto';
       audio.currentTime = 0;
-      el.classList.add('playing');
+
+      activeAudios.push(audio);
+      if (activeAudios.length > MAX_ACTIVE_AUDIO) {
+        const old = activeAudios.shift();
+        try { old.pause(); old.src = ''; } catch (_) {}
+      }
+
+      pulsePad(el);
       setStatus(`${pad.name || `Pad ${id + 1}`} 재생`);
-      audio.addEventListener('ended', () => el.classList.remove('playing'));
-      audio.addEventListener('pause', () => el.classList.remove('playing'));
+
+      const cleanup = () => {
+        activeAudios = activeAudios.filter(a => a !== audio);
+        try { audio.src = ''; } catch (_) {}
+      };
+
+      audio.addEventListener('ended', cleanup, { once: true });
+      audio.addEventListener('error', cleanup, { once: true });
       audio.play().catch(() => {
-        el.classList.remove('playing');
+        cleanup();
         setStatus('브라우저가 재생을 막았습니다. 다시 터치해보세요.');
       });
+    }
+
+    function pulsePad(el) {
+      el.classList.remove('hit');
+      void el.offsetWidth;
+      el.classList.add('hit');
+      setTimeout(() => el.classList.remove('hit'), 130);
     }
 
     function openSheet(id) {
@@ -659,11 +727,18 @@
       db = await openDB();
       const saved = await getAllPads();
       saved.forEach(item => {
-        if (Number.isInteger(item.id) && item.id >= 0 && item.id < PAD_COUNT) pads[item.id] = item;
+        if (Number.isInteger(item.id) && item.id >= 0 && item.id < MAX_PADS) pads[item.id] = item;
       });
       renderPads();
       setStatus('준비됨');
     }
+
+    modeBtn.addEventListener('click', () => {
+      padMode = padMode === 4 ? 9 : 4;
+      localStorage.setItem(MODE_KEY, String(padMode));
+      renderPads();
+      setStatus(`${padMode}칸 모드`);
+    });
 
     editBtn.addEventListener('click', () => {
       editing = !editing;
@@ -673,9 +748,11 @@
     });
 
     clearBtn.addEventListener('click', async () => {
-      if (!confirm('이 기기에 저장된 4개 소리를 모두 삭제할까요?')) return;
+      if (!confirm(`이 기기에 저장된 ${MAX_PADS}개 패드를 모두 삭제할까요?`)) return;
       await clearPads();
-      pads = Array.from({ length: PAD_COUNT }, (_, i) => ({ id: i, name: `Pad ${i + 1}`, blob: null, type: '', updatedAt: null }));
+      pads = Array.from({ length: MAX_PADS }, (_, i) => defaultPad(i));
+      activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
+      activeAudios = [];
       renderPads();
       setStatus('전체 삭제됨');
     });
@@ -709,10 +786,11 @@
 
     deletePadBtn.addEventListener('click', async () => {
       if (selectedPadId === null) return;
-      await deletePad(selectedPadId);
-      pads[selectedPadId] = { id: selectedPadId, name: `Pad ${selectedPadId + 1}`, blob: null, type: '', updatedAt: null };
+      const id = selectedPadId;
+      await deletePad(id);
+      pads[id] = defaultPad(id);
       renderPads();
-      setStatus(`Pad ${selectedPadId + 1} 삭제됨`);
+      setStatus(`Pad ${id + 1} 삭제됨`);
       closeSheet();
     });
 
@@ -728,8 +806,18 @@
       closeSheet();
     });
 
+    window.addEventListener('keydown', event => {
+      if (event.repeat) return;
+      if (sheetBackdrop.classList.contains('open')) return;
+      const n = Number(event.key);
+      if (!Number.isInteger(n) || n < 1 || n > padMode) return;
+      const el = grid.querySelector(`[data-pad-id="${n - 1}"]`);
+      if (el) handlePadClick(n - 1, el);
+    });
+
     window.addEventListener('beforeunload', () => {
       objectUrls.forEach(url => URL.revokeObjectURL(url));
+      activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
       stopStream();
     });
 
