@@ -62,7 +62,7 @@
       gap: 8px;
       flex-wrap: wrap;
       justify-content: flex-end;
-      max-width: 560px;
+      max-width: 520px;
     }
 
     button, .file-label {
@@ -119,7 +119,6 @@
 
     .pad.empty { border-style: dashed; }
     .pad.hit { transform: scale(.97); border-color: rgba(56, 189, 248, .95); background: rgba(56, 189, 248, .12); }
-    .pad.looping { border-color: rgba(52, 211, 153, .95); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 2px rgba(52,211,153,.22), 0 18px 54px rgba(0,0,0,.22); }
     .pad:active { transform: scale(.97); }
 
     .pad::before {
@@ -194,9 +193,12 @@
 
     .mode9 .pad-meta { font-size: 11px; }
 
-    .edit-badge, .loop-badge {
+    .edit-badge {
       position: absolute;
       z-index: 2;
+      top: 14px;
+      right: 14px;
+      display: none;
       padding: 7px 10px;
       border: 1px solid rgba(255,255,255,.18);
       border-radius: 999px;
@@ -206,20 +208,8 @@
       font-weight: 900;
     }
 
-    .edit-badge { top: 14px; right: 14px; display: none; }
     body.editing .edit-badge { display: block; }
-
-    .loop-badge {
-      right: 14px;
-      bottom: 14px;
-      display: none;
-      pointer-events: auto;
-    }
-    .pad.has-sound .loop-badge { display: block; }
-    .loop-badge.on { border-color: rgba(52,211,153,.7); background: rgba(52,211,153,.22); }
-
     .mode9 .edit-badge { top: 9px; right: 9px; padding: 5px 8px; font-size: 10px; }
-    .mode9 .loop-badge { right: 9px; bottom: 9px; padding: 5px 8px; font-size: 10px; }
 
     footer {
       display: flex;
@@ -428,7 +418,7 @@
     <header>
       <div>
         <h1>Soundboard</h1>
-        <p class="sub">각 기기 브라우저에만 저장됩니다. 연타/동시터치/루프/프리셋 지원.</p>
+        <p class="sub">각 기기 브라우저에만 저장됩니다. 연타/동시터치/랜덤/프리셋 지원.</p>
       </div>
       <div class="controls">
         <button id="modeBtn" class="primary" type="button">9칸 모드</button>
@@ -443,7 +433,7 @@
     <section id="grid" class="grid" aria-label="사운드 패드"></section>
 
     <footer>
-      <span>짧게 터치: 재생 · 🔁: 루프 켜기/끄기 · 빈 칸/편집 모드: 녹음/업로드 · PC 숫자키 1~9</span>
+      <span>짧게 터치: 재생 · 빈 칸/편집 모드: 녹음/업로드 · PC 숫자키 1~9 · R 랜덤 · Esc 정지</span>
       <span id="status">준비됨</span>
     </footer>
   </main>
@@ -474,10 +464,6 @@
         <label class="toggle-line">
           <span>속도 변경 시 피치도 같이 변경</span>
           <input id="pitchInput" type="checkbox" />
-        </label>
-        <label class="toggle-line">
-          <span>이 패드는 기본 루프 모드</span>
-          <input id="loopInput" type="checkbox" />
         </label>
       </div>
 
@@ -519,7 +505,7 @@
       <div class="sheet-head">
         <div>
           <h2 id="presetTitle">프리셋</h2>
-          <p>현재 4칸/9칸 구성과 음성파일, 볼륨, 속도, 루프 설정을 통째로 저장합니다. 이 기기 브라우저에만 저장됩니다.</p>
+          <p>현재 4칸/9칸 구성과 음성파일, 볼륨, 속도, 피치 설정을 통째로 저장합니다. 이 기기 브라우저에만 저장됩니다.</p>
         </div>
         <button id="closePresetBtn" type="button">닫기</button>
       </div>
@@ -560,7 +546,6 @@
     const rateInput = document.getElementById('rateInput');
     const rateValue = document.getElementById('rateValue');
     const pitchInput = document.getElementById('pitchInput');
-    const loopInput = document.getElementById('loopInput');
     const fileInput = document.getElementById('fileInput');
     const openRecordBtn = document.getElementById('openRecordBtn');
     const recordPanel = document.getElementById('recordPanel');
@@ -593,7 +578,6 @@
     let meterTimer = null;
     let objectUrls = [];
     let activeAudios = [];
-    let loopAudios = new Map();
 
     function defaultPad(i) {
       return {
@@ -604,8 +588,7 @@
         updatedAt: null,
         volume: 1,
         rate: 1,
-        pitchShift: false,
-        loop: false
+        pitchShift: false
       };
     }
 
@@ -619,8 +602,7 @@
         name: item.name || base.name,
         volume: Number.isFinite(item.volume) ? clamp(item.volume, 0, 1) : 1,
         rate: Number.isFinite(item.rate) ? clamp(item.rate, 0.5, 2) : 1,
-        pitchShift: Boolean(item.pitchShift),
-        loop: Boolean(item.loop)
+        pitchShift: Boolean(item.pitchShift)
       };
     }
 
@@ -713,24 +695,21 @@
       visiblePads().forEach((pad, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `pad ${pad.blob ? 'has-sound' : 'empty'} ${loopAudios.has(index) ? 'looping' : ''}`;
+        btn.className = `pad ${pad.blob ? 'has-sound' : 'empty'}`;
         btn.dataset.padId = String(index);
         btn.setAttribute('aria-label', `${pad.name || `Pad ${index + 1}`} ${pad.blob ? '재생' : '설정'}`);
         btn.innerHTML = `
           <span class="edit-badge">편집</span>
-          <span class="loop-badge ${pad.loop ? 'on' : ''}" data-loop-id="${index}">🔁 ${pad.loop ? 'ON' : 'OFF'}</span>
           <div class="pad-inner">
             <div class="num">${index + 1}</div>
             <div class="pad-main">
               <h3 class="pad-title">${escapeHtml(pad.name || `Pad ${index + 1}`)}</h3>
-              <p class="pad-meta">${pad.blob ? `${Math.round(pad.volume * 100)}% · ${pad.rate.toFixed(2)}x · ${pad.loop ? '루프' : '연타'}` : '녹음/업로드'}</p>
+              <p class="pad-meta">${pad.blob ? `${Math.round(pad.volume * 100)}% · ${pad.rate.toFixed(2)}x · 연타 가능` : '녹음/업로드'}</p>
             </div>
           </div>
         `;
         btn.addEventListener('pointerup', event => {
           if (event.button !== undefined && event.button !== 0) return;
-          const loopTarget = event.target.closest('[data-loop-id]');
-          if (loopTarget) return;
           event.preventDefault();
           handlePadTouch(index, btn);
         });
@@ -764,14 +743,9 @@
       if ('webkitPreservesPitch' in audio) audio.webkitPreservesPitch = preserve;
     }
 
-    function playPad(id, el, options = {}) {
+    function playPad(id, el) {
       const pad = pads[id];
       if (!pad.blob) return openSheet(id);
-
-      if (pad.loop && !options.forceOneShot) {
-        toggleLoop(id, el);
-        return;
-      }
 
       const audio = new Audio(makeUrl(pad.blob));
       audio.preload = 'auto';
@@ -808,41 +782,9 @@
       setTimeout(() => el.classList.remove('hit'), 130);
     }
 
-    function toggleLoop(id, el = getPadEl(id)) {
-      const pad = pads[id];
-      if (!pad.blob) return;
-
-      if (loopAudios.has(id)) {
-        const old = loopAudios.get(id);
-        try { old.pause(); old.src = ''; } catch (_) {}
-        loopAudios.delete(id);
-        if (el) el.classList.remove('looping');
-        setStatus(`${pad.name} 루프 정지`);
-        return;
-      }
-
-      const audio = new Audio(makeUrl(pad.blob));
-      audio.loop = true;
-      audio.preload = 'auto';
-      applyAudioOptions(audio, pad);
-      loopAudios.set(id, audio);
-      if (el) el.classList.add('looping');
-      pulsePad(el);
-      audio.play().then(() => {
-        setStatus(`${pad.name} 루프 재생`);
-      }).catch(() => {
-        loopAudios.delete(id);
-        if (el) el.classList.remove('looping');
-        setStatus('루프 재생 실패. 다시 터치해보세요.');
-      });
-    }
-
     function stopAllSounds() {
       activeAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
       activeAudios = [];
-      loopAudios.forEach(a => { try { a.pause(); a.src = ''; } catch (_) {} });
-      loopAudios.clear();
-      document.querySelectorAll('.pad.looping').forEach(el => el.classList.remove('looping'));
       setStatus('전체 정지');
     }
 
@@ -853,17 +795,7 @@
         return;
       }
       const pad = candidates[Math.floor(Math.random() * candidates.length)];
-      playPad(pad.id, getPadEl(pad.id), { forceOneShot: true });
-    }
-
-    async function togglePadLoopFlag(id) {
-      const pad = pads[id];
-      if (!pad.blob) return;
-      pad.loop = !pad.loop;
-      await put(PAD_STORE, pad);
-      if (!pad.loop && loopAudios.has(id)) toggleLoop(id);
-      renderPads();
-      setStatus(`${pad.name} 루프 ${pad.loop ? '켜짐' : '꺼짐'}`);
+      playPad(pad.id, getPadEl(pad.id));
     }
 
     function openSheet(id) {
@@ -875,7 +807,6 @@
       volumeInput.value = Math.round((pad.volume ?? 1) * 100);
       rateInput.value = Math.round((pad.rate ?? 1) * 100);
       pitchInput.checked = Boolean(pad.pitchShift);
-      loopInput.checked = Boolean(pad.loop);
       updateOptionLabels();
       deletePadBtn.disabled = !pad.blob;
       currentPreview.classList.toggle('hidden', !pad.blob);
@@ -910,8 +841,7 @@
         name: (nameInput.value.trim() || `Pad ${(selectedPadId ?? 0) + 1}`).slice(0, 24),
         volume: clamp(Number(volumeInput.value) / 100, 0, 1),
         rate: clamp(Number(rateInput.value) / 100, 0.5, 2),
-        pitchShift: Boolean(pitchInput.checked),
-        loop: Boolean(loopInput.checked)
+        pitchShift: Boolean(pitchInput.checked)
       };
     }
 
@@ -940,10 +870,6 @@
       const next = { ...old, ...options };
       pads[selectedPadId] = next;
       if (next.blob) await put(PAD_STORE, next);
-      if (loopAudios.has(selectedPadId)) {
-        toggleLoop(selectedPadId);
-        if (next.loop) setTimeout(() => toggleLoop(selectedPadId), 50);
-      }
       renderPads();
       setStatus('설정 저장됨');
       closeSheet();
@@ -1142,14 +1068,6 @@
       setStatus('전체 삭제됨');
     });
 
-    grid.addEventListener('click', async event => {
-      const loopBtn = event.target.closest('[data-loop-id]');
-      if (!loopBtn) return;
-      event.preventDefault();
-      event.stopPropagation();
-      await togglePadLoopFlag(Number(loopBtn.dataset.loopId));
-    });
-
     closeSheetBtn.addEventListener('click', closeSheet);
     sheetBackdrop.addEventListener('click', event => {
       if (event.target === sheetBackdrop) closeSheet();
@@ -1203,7 +1121,6 @@
     deletePadBtn.addEventListener('click', async () => {
       if (selectedPadId === null) return;
       const id = selectedPadId;
-      if (loopAudios.has(id)) toggleLoop(id);
       await remove(PAD_STORE, id);
       pads[id] = defaultPad(id);
       renderPads();
